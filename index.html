@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Primary SEO Metadata -->
+    <title>Chat Cleaner Pro — Clean & Extract ChatGPT, Claude, Perplexity, Grok</title>
+    <meta name="description" content="Paste any messy AI conversation and instantly get a clean prompt and response. Free, no signup, works with ChatGPT, Claude, Perplexity, and Grok." />
+    <meta name="keywords" content="clean chatgpt copy paste, extract chatgpt conversation, chat cleaner, clean claude paste, format ai prompt" />
+    
+    <!-- PWA & Mobile Optimization -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0B0E14" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Clean any AI chat in one click — Chat Cleaner Pro" />
+    <meta property="og:description" content="From messy copy-paste to share-ready Markdown in seconds. Free, works with ChatGPT, Claude, Perplexity, Grok, and Gemini." />
+    <meta property="og:image" content="/og-image.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="Clean any AI chat in one click — Chat Cleaner Pro" />
+    <meta property="twitter:description" content="From messy copy-paste to share-ready Markdown in seconds." />
+    <meta property="twitter:image" content="/og-image.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+            .catch(err => console.error('Service Worker registration failed:', err));
+        });
+      }
+    </script>
+  </body>
+</html>
