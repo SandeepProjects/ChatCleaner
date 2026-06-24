@@ -1,9 +1,9 @@
 const CACHE_NAME = 'chat-cleaner-pro-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/favicon.svg',
-  '/manifest.json'
+  './',
+  './index.html',
+  './favicon.svg',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (e) => {
