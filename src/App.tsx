@@ -3,6 +3,7 @@ import {
   Sparkles, Trash2, Copy, Download, Settings, Info, 
   ChevronDown, ArrowRight, ScrollText, Check, AlertCircle, Share2
 } from 'lucide-react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import ThemeToggle from './components/ThemeToggle';
 import SettingsModal from './components/SettingsModal';
 import { EXAMPLES } from './lib/examples';
@@ -104,14 +105,114 @@ export default function App() {
     setIsLoading(true);
     setResult(null);
 
-    const clientKey = localStorage.getItem('chat-cleaner-pro/client-gemini-key') || '';
+    const clientKey = localStorage.getItem('chat-clean-pro/client-gemini-key') || '';
 
+    // If client has their own key, run Gemini directly from the browser (100% serverless!)
+    if (clientKey) {
+      try {
+        const genAI = new GoogleGenerativeAI(clientKey);
+        let modelName = 'gemini-2.5-flash';
+        let resultText = '';
+
+        const executeGeneration = async (modelToUse: string) => {
+          const model = genAI.getGenerativeModel({
+            model: modelToUse,
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
+            systemInstruction: `You are an expert assistant designed to clean up messy copies of AI chat conversations.
+Your task is to take a copy-pasted conversation from an AI chatbot (such as ChatGPT, Claude, Perplexity, Grok, Gemini, DeepSeek, etc.) and extract the core conversation.
+
+You must output ONLY a valid JSON object. Do not wrap the JSON in markdown code blocks like \`\`\`json. Output raw JSON.
+
+The JSON object must have this structure:
+{
+  "originalPrompt": "The user's first prompt, cleaned of UI boilerplate like 'You:', 'You said:', timestamps, etc., but retaining code and markdown formatting.",
+  "cleanResponse": "The assistant's response corresponding to that prompt, cleaned of UI boilerplate like 'ChatGPT:', 'Claude:', 'Copy code', source card listings, etc., but retaining standard markdown formatting (lists, tables, code blocks).",
+  "platform": "One of: ChatGPT, Claude, Perplexity, Grok, Gemini, DeepSeek, Other",
+  "turns": [
+    {
+      "role": "user" | "assistant",
+      "content": "The cleaned message text"
+    }
+  ]
+}
+
+Instructions for turns:
+- Extract all turns in the chat log if there are multiple exchanges (multi-turn mode).
+- Ensure each turn's content is cleaned of UI scaffolding and user/assistant labels.
+- The 'originalPrompt' should represent the first user message, and 'cleanResponse' should represent the first assistant response.
+- If the chat has only one exchange, the turns array will contain exactly 2 items (1 user, 1 assistant).
+`,
+          });
+
+          const response = await model.generateContent(rawText);
+          return response.response.text();
+        };
+
+        try {
+          resultText = await executeGeneration(modelName);
+        } catch (modelError) {
+          console.warn(`Error using ${modelName}, falling back to gemini-1.5-flash:`, modelError);
+          modelName = 'gemini-1.5-flash';
+          resultText = await executeGeneration(modelName);
+        }
+
+        if (!resultText) {
+          throw new Error('Gemini API returned empty text');
+        }
+
+        let cleanJsonStr = resultText.trim();
+        if (cleanJsonStr.startsWith('```')) {
+          cleanJsonStr = cleanJsonStr.replace(/^```(json)?\n/, '').replace(/\n```$/, '');
+        }
+        const data = JSON.parse(cleanJsonStr);
+
+        // Standardize structure
+        if (!data.originalPrompt || !data.cleanResponse) {
+          data.originalPrompt = data.originalPrompt || 'Unable to extract prompt.';
+          data.cleanResponse = data.cleanResponse || resultText;
+        }
+        if (!data.platform) data.platform = 'Other';
+        if (!data.turns || !Array.isArray(data.turns)) {
+          data.turns = [
+            { role: 'user', content: data.originalPrompt },
+            { role: 'assistant', content: data.cleanResponse }
+          ];
+        }
+
+        setResult(data);
+        if (data.turns && data.turns.length > 2) {
+          setIsMultiTurn(true);
+        } else {
+          setIsMultiTurn(false);
+        }
+        
+        showToast('Conversation cleaned with AI!', 'success');
+        setIsLoading(false);
+        return;
+      } catch (err) {
+        console.error('Client-side Gemini API call failed, falling back to local regex cleaner:', err);
+        const fallbackResult = cleanLocallyWithRegex(rawText);
+        setResult(fallbackResult);
+        if (fallbackResult.turns.length > 2) {
+          setIsMultiTurn(true);
+        } else {
+          setIsMultiTurn(false);
+        }
+        showToast('Cleaned using offline mode.', 'success');
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // Default: Fallback to server call or offline cleaner
     try {
       const response = await fetch('/api/clean', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          ...(clientKey ? { 'x-gemini-key': clientKey } : {})
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ text: rawText })
       });
